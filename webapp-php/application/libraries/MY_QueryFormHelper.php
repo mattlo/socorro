@@ -63,7 +63,7 @@ class QueryFormHelper
 
 	foreach($branch_data['versions'] as $version){
             if (!array_key_exists($version->product, $versions_by_product)) {
-                $versions_by_product[$version->product] = array();
+	        $versions_by_product[$version->product] = array();
             }
             array_push($versions_by_product[$version->product], $version);
 	}

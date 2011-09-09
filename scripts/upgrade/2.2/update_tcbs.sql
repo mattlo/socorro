@@ -77,7 +77,6 @@ SET product_version_id = product_versions.product_version_id
 FROM product_versions
 	JOIN product_version_builds ON product_versions.product_version_id = product_version_builds.product_version_id
 WHERE product_versions.build_type = 'Beta'
-    AND new_tcbs.real_release_channel = 'Beta'
 	AND new_tcbs.product = product_versions.product_name
 	AND new_tcbs.version = product_versions.release_version
 	AND build_numeric(new_tcbs.build) = product_version_builds.build_id;
@@ -88,17 +87,14 @@ UPDATE new_tcbs
 SET product_version_id = product_versions.product_version_id
 FROM product_versions
 WHERE product_versions.build_type <> 'Beta'
-    AND new_tcbs.real_release_channel <> 'Beta'
 	AND new_tcbs.product = product_versions.product_name
 	AND new_tcbs.version = product_versions.release_version
 	AND new_tcbs.product_version_id = 0;
 
--- if there's no product and version still, or no
--- signature, discard
+-- if there's no product and version still, discard
 -- since we can't report on it
 
-DELETE FROM new_tcbs WHERE product_version_id = 0
-  OR signature_id = 0;
+DELETE FROM new_tcbs WHERE product_version_id = 0;
 
 -- fix os_name
 
@@ -116,11 +112,12 @@ INSERT INTO tcbs (
 SELECT signature_id, updateday, product_version_id,
 	process_type, real_release_channel,
 	sum(report_count),
-	sum(case when os_name = 'Windows' THEN report_count else 0 END),
-	sum(case when os_name = 'Mac OS X' THEN report_count else 0 END),
-	sum(case when os_name = 'Linux' THEN report_count else 0 END),
+	sum(case when os_name = 'Windows' THEN 1 else 0 END),
+	sum(case when os_name = 'Mac OS X' THEN 1 else 0 END),
+	sum(case when os_name = 'Linux' THEN 1 else 0 END),
     sum(hang_count)
 FROM new_tcbs
+WHERE signature_id <> 0
 GROUP BY signature_id, updateday, product_version_id,
 	process_type, real_release_channel;
 
@@ -225,21 +222,18 @@ DECLARE tcdate DATE;
 BEGIN
 
 tcdate := '2011-04-17';
-enddate := '2011-08-09';
+enddate := current_date;
 -- timelimited version for stage/dev
---tcdate := '2011-07-25';
---enddate := '2011-08-12';
+--tcdate := '2011-07-20';
+--enddate := '2011-07-27;
 
 WHILE tcdate < enddate LOOP
 
 	PERFORM update_tcbs(tcdate);
 	tcdate := tcdate + 1;
-    RAISE INFO 'updated %',tcdate;
-    DROP TABLE new_tcbs;
 	
 END LOOP;
-END; $f$;
-
+END; $f$
 
 
 

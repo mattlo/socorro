@@ -7,6 +7,7 @@
     <?php 
     	echo html::script(
     	    array(
+    	        'js/__utm.js',
                 'js/jquery/jquery-1.3.2.min.js',
                 'js/jquery/plugins/jquery.cookies.2.2.0.js',
                 'js/socorro/nav.js?v=1.7.6'
@@ -128,7 +129,7 @@
     		<ul>
                 <li><a href="<?php echo url::base() ?>status">Server Status</a></li>
                 <li><a href="http://code.google.com/p/socorro/">Project Info</a></li>
-                <li><a href="https://github.com/mozilla/socorro">Source Code</a></li>
+                <li><a href="http://code.google.com/p/socorro/source">Source Code</a></li>
                 <li><a href="http://wiki.mozilla.org/Breakpad">Breakpad Wiki</a></li>
                 <li><a href="http://www.mozilla.org/about/policies/privacy-policy.html">Privacy Policy</a></li>
     		</ul>

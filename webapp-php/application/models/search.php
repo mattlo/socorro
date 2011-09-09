@@ -152,9 +152,6 @@ class Search_Model extends Model {
                     case 'result_number':
                         $apiData[] = 'result_number';
                         break;
-                    case 'force_api_impl':
-                        $apiData[] = 'force_api_impl';
-                        break;
                     default:
                         $unknownParam = true;
                 }

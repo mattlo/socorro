@@ -61,9 +61,7 @@ class SearchReportHelper{
             'plugin_query_type' => '',
             'plugin_query' => '',
             
-            'do_query'     => FALSE,
-
-            'force_api_impl' => ''
+            'do_query'     => FALSE
         );
     }
 

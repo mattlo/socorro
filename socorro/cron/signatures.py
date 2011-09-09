@@ -34,8 +34,10 @@ def update_signatures(config):
     for hour in xrange(total_hours):
       hour = int(hour) + 1
       timestamp = now - timedelta(hours=hour)
-      # time, hours_back, hours_window
-      databaseCursor.callproc('update_signature_matviews', (timestamp, hours_back, 2))
+      databaseCursor.execute("""
+        --- time, hours_back, hours_window
+        SELECT update_signature_matviews('%s', '%s', 2)
+      """ % (timestamp, hours_back))
       databaseConnection.commit()
   finally:
     databaseConnectionPool.cleanup()
