@@ -45,8 +45,6 @@ if (false) {
 if ($resp) {
     foreach ($resp->hangReport as $entry) {
     $sigParams = array(
-        #'range_value' => $range_value,
-        #'range_unit'  => $range_unit,
         'date'        => $end_date,
         'signature'   => $entry->browser_signature
     );
