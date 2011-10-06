@@ -43,7 +43,13 @@ if (false) {
       <tbody>
 <?php
 if ($resp) {
-    out::H('Showing ' . $duration . ' days');
+?>
+        <ul class="options">
+                <li><a href="<?php out::H($url_base); ?>?duration=3" <?php if ($duration == 3) echo ' class="selected"'; ?>>3 days</a></li>
+                <li><a href="<?php out::H($url_base); ?>?duration=7" <?php if ($duration == 7) echo ' class="selected"'; ?>>7 days</a></li>
+                <li><a href="<?php out::H($url_base); ?>?duration=14" <?php if ($duration == 14) echo ' class="selected"'; ?>>14 days</a></li>
+        </ul>
+<?php
     $pager = new MozPager(Kohana::config('hang_report.byversion_limit', $total_pages, $current_page);
     View::factory('moz_pagination/nav')->render(TRUE);
     foreach ($resp->hangReport as $entry) {
