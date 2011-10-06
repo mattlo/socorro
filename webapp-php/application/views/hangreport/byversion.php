@@ -43,6 +43,7 @@ if (false) {
       <tbody>
 <?php
 if ($resp) {
+    out::H('Showing ' . $duration . ' days');
     $pager = new MozPager(Kohana::config('hang_report.byversion_limit', $total_pages, $current_page);
     View::factory('moz_pagination/nav')->render(TRUE);
     foreach ($resp->hangReport as $entry) {
