@@ -95,7 +95,7 @@ class HangReport_Controller extends Controller {
      * @param   string  The crash type to query by
      * @return  void
      */
-    public function byversion($product=null, $version=null, $duration=null, $crash_type=null)
+    public function byversion($product=null, $version=null, $duration=null)
     {
         if(is_null($product)) {
           Kohana::show_404();
@@ -110,9 +110,6 @@ class HangReport_Controller extends Controller {
         if (empty($duration)) {
             $duration = Kohana::config('products.duration');
         }
-
-        $duration_url_path = array(Router::$controller, Router::$method, $product, $version);
-        $durations = Kohana::config('hang_report.durations');
 
         $config = array();
         $credentials = Kohana::config('webserviceclient.basic_auth');
@@ -136,9 +133,7 @@ class HangReport_Controller extends Controller {
         if ($resp) {
             $this->setViewData(array(
                 'resp'           => $resp,
-                'duration_url'   => url::site(implode($duration_url_path, '/') . '/'),
                 'duration'       => $duration,
-                'durations'      => $durations,
                 'product'        => $product,
                 'version'        => $version,
                 'nav_selection'  => 'hang_report',
