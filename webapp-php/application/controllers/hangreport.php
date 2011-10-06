@@ -138,7 +138,7 @@ class HangReport_Controller extends Controller {
                 'product'        => $product,
                 'version'        => $version,
                 'nav_selection'  => 'hang_report',
-                'end_date'       => $resp->end_date,
+                'end_date'       => $resp->endDate,
                 'url_nav'        => url::site('products/'.$product),
                 'total_pages'    => $resp->totalPages,
                 'current_page'   => $resp->currentPage,

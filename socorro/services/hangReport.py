@@ -67,4 +67,4 @@ class HangReport(webapi.JsonServiceBase):
                      'uuid': uuid,
                      'duplicates': duplicates,
                      'report_day': str(report_day)})
-    return {'hangReport': result, 'end_date': str(parameters['end']), 'totalPages': totalPages, 'currentPage': page}
+    return {'hangReport': result, 'endDate': str(parameters['end']), 'totalPages': totalPages, 'currentPage': page}
