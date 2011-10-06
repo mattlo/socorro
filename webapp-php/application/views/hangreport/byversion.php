@@ -43,6 +43,8 @@ if (false) {
       <tbody>
 <?php
 if ($resp) {
+    $pager = new MozPager(Kohana::config('hang_report.byversion_limit', $total_pages, $current_page);
+    View::factory('moz_pagination/nav')->render(TRUE);
     foreach ($resp->hangReport as $entry) {
     $sigParams = array(
         'date'        => $end_date,
@@ -96,6 +98,7 @@ foreach ($entry->duplicates as $dup) {
           </td>
         </tr>
 <?php
+        View::factory('moz_pagination/nav')->render(TRUE);
     }
 } else {
     View::factory('common/data_access_error')->render(TRUE);

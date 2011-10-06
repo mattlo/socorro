@@ -95,7 +95,7 @@ class HangReport_Controller extends Controller {
      * @param   string  The crash type to query by
      * @return  void
      */
-    public function byversion($product=null, $version=null, $duration=null)
+    public function byversion($product=null, $version=null, $duration=null, $page=null)
     {
         if(is_null($product)) {
           Kohana::show_404();
@@ -128,7 +128,8 @@ class HangReport_Controller extends Controller {
 
         $p = urlencode($product);
         $v = urlencode($version);
-        $resp = $this->hangreport_model->getHangReportViaWebService($p, $v, $duration);
+        $pg = urlencode($page);
+        $resp = $this->hangreport_model->getHangReportViaWebService($p, $v, $duration, $pg);
 
         if ($resp) {
             $this->setViewData(array(
@@ -139,6 +140,8 @@ class HangReport_Controller extends Controller {
                 'nav_selection'  => 'hang_report',
                 'end_date'       => $resp->end_date,
                 'url_nav'        => url::site('products/'.$product),
+                'total_pages'    => $resp->totalPages,
+                'current_page'   => $resp->currentPage,
             ));
         } else {
             header("Data access error", TRUE, 500);
