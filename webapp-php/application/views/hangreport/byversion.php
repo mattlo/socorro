@@ -53,20 +53,20 @@ if ($resp) {
     $pager = new MozPager(Kohana::config('hang_report.byversion_limit', $total_pages, $current_page);
     View::factory('moz_pagination/nav')->render(TRUE);
     foreach ($resp->hangReport as $entry) {
-    $sigParams = array(
-        'date'        => $end_date,
-        'signature'   => $entry->browser_signature
-    );
-    if (property_exists($entry, 'branch')) {
-        $sigParams['branch'] = $entry->branch;
-    } else {
-        $sigParams['version'] = $product . ':' . $version;
-    }
-
-    $browser_link_url =  url::base() . 'report/list?' . html::query_string($sigParams);
-    $sigParams['signature'] = $entry->plugin_signature;
-    $plugin_link_url =  url::base() . 'report/list?' . html::query_string($sigParams);
-    $uuid_link_url = url::base() . 'report/index/' . $entry->uuid;
+        $sigParams = array(
+            'date'        => $end_date,
+            'signature'   => $entry->browser_signature
+        );
+        if (property_exists($entry, 'branch')) {
+            $sigParams['branch'] = $entry->branch;
+        } else {
+            $sigParams['version'] = $product . ':' . $version;
+        }
+    
+        $browser_link_url =  url::base() . 'report/list?' . html::query_string($sigParams);
+        $sigParams['signature'] = $entry->plugin_signature;
+        $plugin_link_url =  url::base() . 'report/list?' . html::query_string($sigParams);
+        $uuid_link_url = url::base() . 'report/index/' . $entry->uuid;
 ?>
         <tr>
           <td>
