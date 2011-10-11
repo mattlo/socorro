@@ -121,7 +121,7 @@ def insertBuild(cursor, product_name, version, platform, build_id, build_type, b
   """ Insert a particular build into the database """
   if not buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number, repository):
     sql = """ INSERT INTO releases_raw (product_name, version, platform, build_id, build_type, beta_number, repository)
-              VALUES (%s, %s, %s, %s, %s, %s)"""
+              VALUES (%s, %s, %s, %s, %s, %s, %s)"""
 
     try:
       params = (product_name, version, platform, build_id, build_type, beta_number)
