@@ -150,11 +150,13 @@ def scrape(config, cursor):
                         (platform, version, build_number, kvpairs) = info
                         build_type = 'Release'
                         beta_number = None
+                        repository = 'mozilla-release'
                         if 'b' in version:
                             build_type = 'Beta'
                             version, beta_number = version.split('b')
+                            repository = 'mozilla-beta'
                         build_id = kvpairs['buildID']
-                        insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number, 'mozilla-release')
+                        insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number, repository)
                 
                 nightlies = getLinks(url, startswith='latest')
                 for nightly in nightlies:
