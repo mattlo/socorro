@@ -128,7 +128,7 @@ def insertBuild(cursor, product_name, version, platform, build_id, build_type, b
       cursor.execute(sql, params)
       #print cursor.mogrify(sql, params)
       cursor.connection.commit()
-      logger.info("Inserted the following build: %s %s %s %s %s %s" % params)
+      logger.info("Inserted the following build: %s %s %s %s %s %s %s" % params)
     except Exception:
       cursor.connection.rollback()
       util.reportExceptionAndAbort(logger)
