@@ -2,6 +2,7 @@
 """
 ftpscraper.py pulls build information from ftp.mozilla.org for nightly and release builds.
 """
+import sys
 import urllib2
 import json
 from BeautifulSoup import BeautifulSoup, SoupStrainer
@@ -86,38 +87,48 @@ def getNightly(dirname, url):
 
     return build_data
 
+def scrape(links, parser):
+    results = {}
+    for l in links:
+        for info in parser(l, url):
+            osname = info.keys()[0]
+            if osname in results:
+                kvpairs = info[osname].keys()[0]
+                results[osname][kvpairs] = info[osname][kvpairs]
+            else:
+                results[osname] = info[osname]
+    return results
+
 products = ['firefox', 'mobile', 'thunderbird', 'seamonkey', 'camino']
 
-for p in products:
-    for d in ('nightly', 'candidates'):
-        url = '%s/%s/%s/' % (baseurl, p, d)
-        print url
+results = {}
+for product in products:
+    for dir in ('nightly', 'candidates'):
+        prod_url = '%s/%s/' % (baseurl, product)
+        if not getLinks(prod_url, startswith=dir):
+            print >> sys.stderr, 'Dir %s not found for product %s' % (dir, product)
+            continue
+
+        url = '%s/%s/%s/' % (baseurl, product, dir)
     
         try: 
             releases = getLinks(url, endswith='-candidates/')
-            release_info = {}
-    
-            for r in releases:
-                for info in getRelease(r, url):
-                    osname = info.keys()[0]
-                    if osname in release_info:
-                        version = info[osname].keys()[0]
-                        release_info[osname][version] = info[osname][version]
-                    else:
-                        release_info[osname] = info[osname]
-            print json.dumps(release_info)
+            release_results = scrape(releases, getRelease)
             
             nightlies = getLinks(url, startswith='latest')
-            nightly_info = {}
-            for n in nightlies:
-                for info in getNightly(n, url):
-                    osname = info.keys()[0]
-                    if osname in nightly_info:
-                        branch = info[osname].keys()[0]
-                        nightly_info[osname][branch] = info[osname][branch]
-                    else:
-                        nightly_info[osname] = info[osname]
-            print json.dumps(nightly_info)
-        except urllib2.HTTPError:
-            print '404 for %s, continuing...' % url
+            nightly_results = scrape(nightlies, getNightly)
 
+            result = {
+                product: {
+                    'releases': release_results,
+                    'nightlies': nightly_results,
+                }
+            }
+            results = dict(results.items() + result.items())
+        except urllib2.URLError, e:
+            if not hasattr(e, "code"):
+                raise
+            resp = e
+            print >> sys.stderr, 'HTTP code %s for URL %s' % (resp.code, url)
+
+print json.dumps(results)
