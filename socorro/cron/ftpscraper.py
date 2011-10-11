@@ -4,7 +4,6 @@ ftpscraper.py pulls build information from ftp.mozilla.org for nightly and relea
 """
 import sys
 import urllib2
-import json
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 
 baseurl = 'http://ftp.mozilla.org/pub/mozilla.org'
@@ -50,7 +49,6 @@ def getRelease(dirname, url):
 
     info_files = getLinks(build_url, endswith='_info.txt')
 
-    build_data = []
     for f in info_files:
         info_url = '%s/%s' % (build_url, f)
         kvpairs = parseInfoFile(info_url)
@@ -60,21 +58,12 @@ def getRelease(dirname, url):
         version = dirname.split('-candidates')[0]
         build_number = latest_build.strip('/')
 
-        build_data.append({
-            osname: {
-                version: {
-                    build_number: kvpairs
-                }
-            }
-        })
+        yield (osname, version, build_number, kvpairs)
   
-    return build_data
-
 def getNightly(dirname, url):
     nightly_url = '%s/%s' % (url, dirname)
     info_files = getLinks(nightly_url, endswith='.txt')
 
-    build_data = []
     for f in info_files:
         if 'en-US' in f:
             (pv, osname) = f.strip('.txt').split('.en-US.')
@@ -84,31 +73,10 @@ def getNightly(dirname, url):
             info_url = '%s/%s' % (nightly_url, f)
             kvpairs = parseInfoFile(info_url, nightly=True)
 
-            build_data.append({
-                osname: {
-                    branch: {
-                        version: kvpairs
-                    }
-                }
-            })
-
-    return build_data
-
-def scrape(links, parser):
-    results = {}
-    for l in links:
-        for info in parser(l, url):
-            osname = info.keys()[0]
-            if osname in results:
-                kvpairs = info[osname].keys()[0]
-                results[osname][kvpairs] = info[osname][kvpairs]
-            else:
-                results[osname] = info[osname]
-    return results
+            yield (osname, branch, version, kvpairs)
 
 products = ['firefox', 'mobile', 'thunderbird', 'seamonkey', 'camino']
 
-results = {}
 for product in products:
     for dir in ('nightly', 'candidates'):
         prod_url = '%s/%s/' % (baseurl, product)
@@ -117,25 +85,34 @@ for product in products:
             continue
 
         url = '%s/%s/%s/' % (baseurl, product, dir)
+        sql = """INSERT INTO releases_raw (product_name, version, platform, build_id, build_type, beta_number)
+                 VALUES(%s, %s, %s, %s, %s, %s)"""
     
         try: 
             releases = getLinks(url, endswith='-candidates/')
-            release_results = scrape(releases, getRelease)
+            for release in releases:
+                for info in getRelease(release, url):
+                    (osname, version, build_number, kvpairs) = info
+                    build_type = 'Release'
+                    beta_number = None
+                    if 'b' in version:
+                        build_type = 'Beta'
+                        beta_number = version.split('b')[1]
+                    build_id = kvpairs['buildID']
+                    print sql % (product, version, osname, build_id, build_type, None)
             
             nightlies = getLinks(url, startswith='latest')
-            nightly_results = scrape(nightlies, getNightly)
+            for nightly in nightlies:
+                for info in getNightly(nightly, url):
+                    (osname, branch, version, kvpairs) = info
+                    build_id = kvpairs['buildID']
+                    build_type = 'Nightly'
+                    if version.endswith('a2'):
+                        build_type = 'Aurora'
+                    print sql % (product, version, osname, build_id, build_type, None)
 
-            result = {
-                product: {
-                    'releases': release_results,
-                    'nightlies': nightly_results,
-                }
-            }
-            results = dict(results.items() + result.items())
         except urllib2.URLError, e:
             if not hasattr(e, "code"):
                 raise
             resp = e
             print >> sys.stderr, 'HTTP code %s for URL %s' % (resp.code, url)
-
-print json.dumps(results)
