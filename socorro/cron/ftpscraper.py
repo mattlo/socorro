@@ -13,6 +13,7 @@ def getLinks(url, startswith=None, endswith=None):
     page = urllib2.urlopen(url)
     links = SoupStrainer('a')
     soup = BeautifulSoup(page, parseOnlyThese=links)
+    page.close()
     results = []
     for tag in soup:
         link = tag.contents[0]
@@ -27,6 +28,7 @@ def getLinks(url, startswith=None, endswith=None):
 def parseInfoFile(url, nightly=False):
     infotxt = urllib2.urlopen(url)
     contents = infotxt.read().split()
+    infotxt.close()
     results = {}
     if nightly:
         results = {'buildID': contents[0], 'rev': contents[1]}
