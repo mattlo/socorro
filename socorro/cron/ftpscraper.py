@@ -26,13 +26,18 @@ def getLinks(url, startswith=None, endswith=None):
 
 def parseInfoFile(url, nightly=False):
     infotxt = urllib2.urlopen(url)
+    contents = infotxt.read().split()
+    results = {}
     if nightly:
-        kv = infotxt.read().split('\n')
-        k = kv[0]
-        v = kv[1]
+        results = {'buildID': contents[0], 'rev': contents[1]}
+        if len(contents) > 2:
+            results['altrev'] = contents[2]
     else:
-        k, v = infotxt.read().strip().split('=')
-    return {k:v}
+        for entry in contents:
+            (k,v) = entry.split('=')
+            results[k] = v
+
+    return results
 
 def getRelease(dirname, url):
     candidate_url = '%s/%s' % (url, dirname)
