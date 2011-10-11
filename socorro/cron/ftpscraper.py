@@ -89,7 +89,7 @@ def recordBuilds(config):
     finally:
         databaseConnectionPool.cleanup()
 
-def buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number):
+def buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number, repository):
   """ Determine whether or not a particular release build exists already in the database """
   sql = """
     SELECT *
@@ -106,12 +106,14 @@ def buildExists(cursor, product_name, version, platform, build_id, build_type, b
   else:
     sql += """ AND beta_number IS %s """
 
-  params = (product_name, version, platform, build_id, build_type, beta_number)
+  sql += """ AND repository = %s """
+
+  params = (product_name, version, platform, build_id, build_type, beta_number, repository)
   cursor.execute(sql, params)
   exists = cursor.fetchone()
 
   if exists is None:
-    logger.info("Did not find build entries in releases_raw table for %s %s %s %s %s %s" % (product_name, version, platform, build_id, build_type, beta_number))
+    logger.info("Did not find build entries in releases_raw table for %s %s %s %s %s %s %s" % params)
 
   return exists
 
