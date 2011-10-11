@@ -3,10 +3,15 @@
 ftpscraper.py pulls build information from ftp.mozilla.org for nightly and release builds.
 """
 import sys
+import logging
 import urllib2
+
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 
-baseurl = 'http://ftp.mozilla.org/pub/mozilla.org'
+import socorro.lib.psycopghelper as psy
+import socorro.lib.util as util
+
+logger = logging.getLogger("ftpscraper")
 
 def getLinks(url, startswith=None, endswith=None):
     page = urllib2.urlopen(url)
@@ -53,12 +58,12 @@ def getRelease(dirname, url):
         info_url = '%s/%s' % (build_url, f)
         kvpairs = parseInfoFile(info_url)
 
-        osname = f.split('_info.txt')[0]
+        platform = f.split('_info.txt')[0]
 
         version = dirname.split('-candidates')[0]
         build_number = latest_build.strip('/')
 
-        yield (osname, version, build_number, kvpairs)
+        yield (platform, version, build_number, kvpairs)
   
 def getNightly(dirname, url):
     nightly_url = '%s/%s' % (url, dirname)
@@ -66,53 +71,102 @@ def getNightly(dirname, url):
 
     for f in info_files:
         if 'en-US' in f:
-            (pv, osname) = f.strip('.txt').split('.en-US.')
+            (pv, platform) = f.strip('.txt').split('.en-US.')
             (product, version) = pv.split('-')
             branch = dirname.strip('/')
 
             info_url = '%s/%s' % (nightly_url, f)
             kvpairs = parseInfoFile(info_url, nightly=True)
 
-            yield (osname, branch, version, kvpairs)
+            yield (platform, branch, version, kvpairs)
 
-products = ['firefox', 'mobile', 'thunderbird', 'seamonkey', 'camino']
+def recordBuilds(config):
+    databaseConnectionPool = psy.DatabaseConnectionPool(config.databaseHost, config.databaseName, config.databaseUserName, config.databasePassword, logger)
 
-for product in products:
-    for dir in ('nightly', 'candidates'):
-        prod_url = '%s/%s/' % (baseurl, product)
-        if not getLinks(prod_url, startswith=dir):
-            print >> sys.stderr, 'Dir %s not found for product %s' % (dir, product)
-            continue
+    try:
+        connection, cursor = databaseConnectionPool.connectionCursorPair()
+        scrape(config, cursor)
+    finally:
+        databaseConnectionPool.cleanup()
 
-        url = '%s/%s/%s/' % (baseurl, product, dir)
-        sql = """INSERT INTO releases_raw (product_name, version, platform, build_id, build_type, beta_number)
-                 VALUES(%s, %s, %s, %s, %s, %s)"""
+def buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number):
+  """ Determine whether or not a particular release build exists already in the database """
+  sql = """
+    SELECT *
+    FROM releases_raw
+    WHERE product_name = %s
+    AND version = %s
+    AND platform = %s
+    AND build_id = %s
+    AND build_type = %s
+  """
+
+  if beta_number is not None:
+    sql += """ AND beta_number = %s """
+  else:
+    sql += """ AND beta_number IS %s """
+
+  params = (product_name, version, platform, build_id, build_type, beta_number)
+  cursor.execute(sql, params)
+  exists = cursor.fetchone()
+
+  if exists is None:
+    logger.info("Did not find build entries in releases_raw table for %s %s %s %s %s %s" % (product_name, version, platform, build_id, build_type, beta_number))
+
+  return exists
+
+def insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number):
+  """ Insert a particular build into the database """
+  if not buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number):
+    sql = """ INSERT INTO releases_raw (product_name, version, platform, build_id, build_type, beta_number)
+              VALUES (%s, %s, %s, %s, %s, %s)"""
+
+    try:
+      params = (product_name, version, platform, build_id, build_type, beta_number)
+      cursor.execute(sql, params)
+      #print cursor.mogrify(sql, params)
+      cursor.connection.commit()
+      logger.info("Inserted the following build: %s %s %s %s %s %s" % params)
+    except Exception:
+      cursor.connection.rollback()
+      util.reportExceptionAndAbort(logger)
+
+def scrape(config, cursor):
+    for product_name in config.products:
+        for dir in ('nightly', 'candidates'):
+            prod_url = '%s/%s/' % (config.base_url, product_name)
+            if not getLinks(prod_url, startswith=dir):
+                print >> sys.stderr, 'Dir %s not found for product_name %s' % (dir, product_name)
+                continue
     
-        try: 
-            releases = getLinks(url, endswith='-candidates/')
-            for release in releases:
-                for info in getRelease(release, url):
-                    (osname, version, build_number, kvpairs) = info
-                    build_type = 'Release'
-                    beta_number = None
-                    if 'b' in version:
-                        build_type = 'Beta'
-                        beta_number = version.split('b')[1]
-                    build_id = kvpairs['buildID']
-                    print sql % (product, version, osname, build_id, build_type, None)
-            
-            nightlies = getLinks(url, startswith='latest')
-            for nightly in nightlies:
-                for info in getNightly(nightly, url):
-                    (osname, branch, version, kvpairs) = info
-                    build_id = kvpairs['buildID']
-                    build_type = 'Nightly'
-                    if version.endswith('a2'):
-                        build_type = 'Aurora'
-                    print sql % (product, version, osname, build_id, build_type, None)
-
-        except urllib2.URLError, e:
-            if not hasattr(e, "code"):
-                raise
-            resp = e
-            print >> sys.stderr, 'HTTP code %s for URL %s' % (resp.code, url)
+            url = '%s/%s/%s/' % (config.base_url, product_name, dir)
+        
+            try: 
+                releases = getLinks(url, endswith='-candidates/')
+                for release in releases:
+                    for info in getRelease(release, url):
+                        (platform, version, build_number, kvpairs) = info
+                        build_type = 'Release'
+                        beta_number = None
+                        if 'b' in version:
+                            build_type = 'Beta'
+                            version, beta_number = version.split('b')
+                        build_id = kvpairs['buildID']
+                        insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number)
+                
+                nightlies = getLinks(url, startswith='latest')
+                for nightly in nightlies:
+                    for info in getNightly(nightly, url):
+                        (platform , branch, version, kvpairs) = info
+                        build_id = kvpairs['buildID']
+                        build_type = 'Nightly'
+                        if version.endswith('a2'):
+                            build_type = 'Aurora'
+                        version = version.split('a')[0]
+                        insertBuild(cursor, product_name, version, platform, build_id, build_type, None)
+    
+            except urllib2.URLError, e:
+                if not hasattr(e, "code"):
+                    raise
+                resp = e
+                print >> sys.stderr, 'HTTP code %s for URL %s' % (resp.code, url)
