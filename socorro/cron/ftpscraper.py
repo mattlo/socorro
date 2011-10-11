@@ -73,12 +73,12 @@ def getNightly(dirname, url):
         if 'en-US' in f:
             (pv, platform) = f.strip('.txt').split('.en-US.')
             (product, version) = pv.split('-')
-            branch = dirname.strip('/')
+            repository = dirname.strip('/')
 
             info_url = '%s/%s' % (nightly_url, f)
             kvpairs = parseInfoFile(info_url, nightly=True)
 
-            yield (platform, branch, version, kvpairs)
+            yield (platform, repository, version, kvpairs)
 
 def recordBuilds(config):
     databaseConnectionPool = psy.DatabaseConnectionPool(config.databaseHost, config.databaseName, config.databaseUserName, config.databasePassword, logger)
@@ -115,10 +115,10 @@ def buildExists(cursor, product_name, version, platform, build_id, build_type, b
 
   return exists
 
-def insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number):
+def insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number, repository):
   """ Insert a particular build into the database """
-  if not buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number):
-    sql = """ INSERT INTO releases_raw (product_name, version, platform, build_id, build_type, beta_number)
+  if not buildExists(cursor, product_name, version, platform, build_id, build_type, beta_number, repository):
+    sql = """ INSERT INTO releases_raw (product_name, version, platform, build_id, build_type, beta_number, repository)
               VALUES (%s, %s, %s, %s, %s, %s)"""
 
     try:
@@ -152,18 +152,18 @@ def scrape(config, cursor):
                             build_type = 'Beta'
                             version, beta_number = version.split('b')
                         build_id = kvpairs['buildID']
-                        insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number)
+                        insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number, 'mozilla-release')
                 
                 nightlies = getLinks(url, startswith='latest')
                 for nightly in nightlies:
                     for info in getNightly(nightly, url):
-                        (platform , branch, version, kvpairs) = info
+                        (platform , repository, version, kvpairs) = info
                         build_id = kvpairs['buildID']
                         build_type = 'Nightly'
                         if version.endswith('a2'):
                             build_type = 'Aurora'
                         version = version.split('a')[0]
-                        insertBuild(cursor, product_name, version, platform, build_id, build_type, None)
+                        insertBuild(cursor, product_name, version, platform, build_id, build_type, None, repository)
     
             except urllib2.URLError, e:
                 if not hasattr(e, "code"):
