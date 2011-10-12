@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 """
-fetchBuilds.py is used to get the primary nightly builds from ftp.mozilla.org, record
+startFtpScraper.py is used to get the primary nightly builds from ftp.mozilla.org, record
 the build information and provide that information through the Crash Reporter website.
 
-This script is expected to be run once per day.
+This script can be run as often as desired, and will automatically backfill.
 """
 
 import logging
