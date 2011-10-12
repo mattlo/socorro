@@ -64,7 +64,7 @@ def getRelease(dirname, url, urllib=urllib2):
 
         yield (platform, version, build_number, kvpairs)
   
-def getNightly(dirname, url):
+def getNightly(dirname, url, urllib=urllib2):
     nightly_url = '%s/%s' % (url, dirname)
     info_files = getLinks(nightly_url, endswith='.txt', urllib=urllib)
 
