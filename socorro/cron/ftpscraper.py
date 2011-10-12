@@ -115,7 +115,7 @@ def buildExists(cursor, product_name, version, platform, build_id, build_type, b
   if exists is None:
     logger.info("Did not find build entries in releases_raw table for %s %s %s %s %s %s %s" % params)
 
-  return exists
+  return exists != None
 
 def insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number, repository):
   """ Insert a particular build into the database """
