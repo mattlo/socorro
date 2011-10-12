@@ -13,8 +13,8 @@ import socorro.lib.util as util
 
 logger = logging.getLogger("ftpscraper")
 
-def getLinks(url, startswith=None, endswith=None):
-    page = urllib2.urlopen(url)
+def getLinks(url, startswith=None, endswith=None, urllib=urllib2):
+    page = urllib.urlopen(url)
     links = SoupStrainer('a')
     soup = BeautifulSoup(page, parseOnlyThese=links)
     page.close()
@@ -29,8 +29,8 @@ def getLinks(url, startswith=None, endswith=None):
                 results.append(link)
     return results
 
-def parseInfoFile(url, nightly=False):
-    infotxt = urllib2.urlopen(url)
+def parseInfoFile(url, nightly=False, urllib=urllib2):
+    infotxt = urllib.urlopen(url)
     contents = infotxt.read().split()
     infotxt.close()
     results = {}
@@ -45,14 +45,13 @@ def parseInfoFile(url, nightly=False):
 
     return results
 
-def getRelease(dirname, url):
+def getRelease(dirname, url, urllib=urllib2):
     candidate_url = '%s/%s' % (url, dirname)
-    builds = getLinks(candidate_url, startswith='build')
-
+    builds = getLinks(candidate_url, startswith='build', urllib=urllib)
     latest_build = builds.pop()
     build_url = '%s/%s' % (candidate_url, latest_build)
 
-    info_files = getLinks(build_url, endswith='_info.txt')
+    info_files = getLinks(build_url, endswith='_info.txt', urllib=urllib)
 
     for f in info_files:
         info_url = '%s/%s' % (build_url, f)
@@ -67,7 +66,7 @@ def getRelease(dirname, url):
   
 def getNightly(dirname, url):
     nightly_url = '%s/%s' % (url, dirname)
-    info_files = getLinks(nightly_url, endswith='.txt')
+    info_files = getLinks(nightly_url, endswith='.txt', urllib=urllib)
 
     for f in info_files:
         if 'en-US' in f:
@@ -126,25 +125,24 @@ def insertBuild(cursor, product_name, version, platform, build_id, build_type, b
     try:
       params = (product_name, version, platform, build_id, build_type, beta_number, repository)
       cursor.execute(sql, params)
-      #print cursor.mogrify(sql, params)
       cursor.connection.commit()
       logger.info("Inserted the following build: %s %s %s %s %s %s %s" % params)
     except Exception:
       cursor.connection.rollback()
       util.reportExceptionAndAbort(logger)
 
-def scrape(config, cursor):
+def scrape(config, cursor, urllib=urllib2):
     for product_name in config.products:
         for dir in ('nightly', 'candidates'):
             prod_url = '%s/%s/' % (config.base_url, product_name)
-            if not getLinks(prod_url, startswith=dir):
+            if not getLinks(prod_url, startswith=dir, urllib=urllib):
                 print >> sys.stderr, 'Dir %s not found for product_name %s' % (dir, product_name)
                 continue
     
             url = '%s/%s/%s/' % (config.base_url, product_name, dir)
         
             try: 
-                releases = getLinks(url, endswith='-candidates/')
+                releases = getLinks(url, endswith='-candidates/', urllib=urllib)
                 for release in releases:
                     for info in getRelease(release, url):
                         (platform, version, build_number, kvpairs) = info
@@ -158,7 +156,7 @@ def scrape(config, cursor):
                         build_id = kvpairs['buildID']
                         insertBuild(cursor, product_name, version, platform, build_id, build_type, beta_number, repository)
                 
-                nightlies = getLinks(url, startswith='latest')
+                nightlies = getLinks(url, startswith='latest', urllib=urllib)
                 for nightly in nightlies:
                     for info in getNightly(nightly, url):
                         (platform , repository, version, kvpairs) = info
@@ -169,7 +167,7 @@ def scrape(config, cursor):
                         version = version.split('a')[0]
                         insertBuild(cursor, product_name, version, platform, build_id, build_type, None, repository)
     
-            except urllib2.URLError, e:
+            except urllib.URLError, e:
                 if not hasattr(e, "code"):
                     raise
                 resp = e
